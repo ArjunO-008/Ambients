@@ -5,3 +5,11 @@
 export function SetContext(arg1) {
   return window['go']['bridge']['Bridge']['SetContext'](arg1);
 }
+
+export function StartClock(arg1) {
+  return window['go']['bridge']['Bridge']['StartClock'](arg1);
+}
+
+export function StopClock() {
+  return window['go']['bridge']['Bridge']['StopClock']();
+}

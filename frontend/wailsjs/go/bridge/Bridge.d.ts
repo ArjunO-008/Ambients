@@ -3,3 +3,7 @@
 import {context} from '../models';
 
 export function SetContext(arg1:context.Context):Promise<void>;
+
+export function StartClock(arg1:boolean):Promise<void>;
+
+export function StopClock():Promise<void>;
