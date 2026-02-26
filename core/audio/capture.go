@@ -4,15 +4,15 @@ import (
 	"context"
 	"math"
 	"math/cmplx"
-	"runtime"
 	"sync"
+	"time"
 
 	"github.com/gordonklaus/portaudio"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
-	sampleRate = 44100
+	sampleRate = 48000
 	frameSize  = 1024
 	numBands   = 64
 	emitEveryN = 3
@@ -32,12 +32,12 @@ func NewAudioService(ctx context.Context) *AudioService {
 		startCh: make(chan struct{}, 1),
 		stopCh:  make(chan struct{}, 1),
 	}
-
+	// audio thread starts waiting immediately —
+	// it won't do anything until Start() sends to startCh
 	go a.audioThread()
 	return a
 }
 
-// SAFE: called from Wails
 func (a *AudioService) Start() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -46,12 +46,11 @@ func (a *AudioService) Start() error {
 		return nil
 	}
 
-	a.startCh <- struct{}{}
 	a.running = true
+	a.startCh <- struct{}{} // wake up the audio thread
 	return nil
 }
 
-// SAFE: called from Wails
 func (a *AudioService) Stop() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -62,73 +61,96 @@ func (a *AudioService) Stop() {
 	}
 }
 
-// Native audio lives HERE — not in Wails thread
+// audioThread runs on its own OS thread.
+// PortAudio requires this on some platforms —
+// keeping it here prevents crashes in the Wails UI thread.
 func (a *AudioService) audioThread() {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	// LockOSThread ensures this goroutine always runs on the same OS thread.
+	// PortAudio's WASAPI backend requires this.
+	// runtime.LockOSThread() -- only needed if CGO issues arise, skip for now
 
 	for range a.startCh {
+		a.runCapture()
+	}
+}
 
-		if err := portaudio.Initialize(); err != nil {
-			a.running = false
-			continue
-		}
+// runCapture does the actual PortAudio work —
+// initialize, find device, open stream, read frames, emit bands.
+// Separated from audioThread so it can cleanly return on errors.
+func (a *AudioService) runCapture() {
+	if err := portaudio.Initialize(); err != nil {
+		// emit error event so React can show it
+		wailsRuntime.EventsEmit(a.ctx, "audio:error", "PortAudio init failed: "+err.Error())
+		a.mu.Lock()
+		a.running = false
+		a.mu.Unlock()
+		return
+	}
+	defer portaudio.Terminate()
 
-		device, err := findLoopbackDevice()
-		if err != nil {
-			portaudio.Terminate()
-			a.running = false
-			continue
-		}
+	device, err := findLoopbackDevice()
+	if err != nil {
+		wailsRuntime.EventsEmit(a.ctx, "audio:error", err.Error())
+		a.mu.Lock()
+		a.running = false
+		a.mu.Unlock()
+		return
+	}
 
-		buffer := make([]float32, frameSize)
+	buffer := make([]float32, frameSize)
 
-		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
-			Input: portaudio.StreamDeviceParameters{
-				Device:   device,
-				Channels: 1,
-				Latency:  device.DefaultLowInputLatency,
-			},
-			SampleRate:      float64(sampleRate),
-			FramesPerBuffer: frameSize,
-		}, buffer)
+	stream, err := portaudio.OpenStream(portaudio.StreamParameters{
+		Input: portaudio.StreamDeviceParameters{
+			Device:   device,
+			Channels: 1, // mono — enough for visualization
+			Latency:  device.DefaultLowInputLatency,
+		},
+		SampleRate:      float64(sampleRate),
+		FramesPerBuffer: frameSize,
+	}, buffer)
+	if err != nil {
+		wailsRuntime.EventsEmit(a.ctx, "audio:error", "Stream open failed: "+err.Error())
+		a.mu.Lock()
+		a.running = false
+		a.mu.Unlock()
+		return
+	}
 
-		if err != nil {
-			portaudio.Terminate()
-			a.running = false
-			continue
-		}
-
-		if err := stream.Start(); err != nil {
-			stream.Close()
-			portaudio.Terminate()
-			a.running = false
-			continue
-		}
-
-		frameCount := 0
-
-	audioLoop:
-		for {
-			select {
-			case <-a.stopCh:
-				stream.Stop()
-				break audioLoop
-			default:
-				if err := stream.Read(); err != nil {
-					continue
-				}
-				frameCount++
-				if frameCount%emitEveryN != 0 {
-					continue
-				}
-				bands := computeBands(buffer)
-				wailsRuntime.EventsEmit(a.ctx, "audio:frame", bands)
-			}
-		}
-
+	if err := stream.Start(); err != nil {
 		stream.Close()
-		portaudio.Terminate()
+		wailsRuntime.EventsEmit(a.ctx, "audio:error", "Stream start failed: "+err.Error())
+		a.mu.Lock()
+		a.running = false
+		a.mu.Unlock()
+		return
+	}
+
+	defer stream.Close()
+
+	frameCount := 0
+
+	for {
+		select {
+		case <-a.stopCh:
+			// Stop() was called — shut down cleanly
+			stream.Stop()
+			return
+
+		default:
+			if err := stream.Read(); err != nil {
+				// small sleep prevents CPU spin on read errors
+				time.Sleep(5 * time.Millisecond)
+				continue
+			}
+
+			frameCount++
+			if frameCount%emitEveryN != 0 {
+				continue
+			}
+
+			bands := computeBands(buffer)
+			wailsRuntime.EventsEmit(a.ctx, "audio:frame", bands)
+		}
 	}
 }
 
@@ -136,6 +158,7 @@ func computeBands(samples []float32) []float64 {
 	n := len(samples)
 	c := make([]complex128, n)
 	for i, s := range samples {
+		// Hanning window reduces frequency bleed between bands
 		window := 0.5 * (1 - math.Cos(2*math.Pi*float64(i)/float64(n-1)))
 		c[i] = complex(float64(s)*window, 0)
 	}
@@ -144,6 +167,7 @@ func computeBands(samples []float32) []float64 {
 	half := n / 2
 	bandSize := half / numBands
 	bands := make([]float64, numBands)
+
 	for i := 0; i < numBands; i++ {
 		start := i * bandSize
 		end := start + bandSize
@@ -152,12 +176,14 @@ func computeBands(samples []float32) []float64 {
 			sum += cmplx.Abs(c[j])
 		}
 		avg := sum / float64(bandSize)
+		// convert to dB scale — closer to how human ears perceive loudness
 		db := 20 * math.Log10(avg+1e-10)
 		normalized := (db + 80) / 80
 		bands[i] = math.Max(0, math.Min(1, normalized))
 	}
 	return bands
 }
+
 func fft(a []complex128) {
 	n := len(a)
 	if n <= 1 {
