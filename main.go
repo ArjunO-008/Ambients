@@ -14,11 +14,9 @@ import (
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
 	app := NewApp()
 	b := bridge.NewBridge()
 
-	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "Ambients",
 		Width:  1024,
@@ -27,10 +25,14 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+
+		// Context is guaranteed ready here
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
 			b.SetContext(ctx)
 		},
+
+		// Safe because Bridge now guards initialization
 		Bind: []interface{}{
 			app,
 			b,

@@ -1,29 +1,60 @@
 package bridge
 
 import (
+	"Ambients/core/audio"
 	"Ambients/core/clock"
 	"context"
+	"fmt"
+	"sync"
 )
 
 type Bridge struct {
-	ctx          context.Context
+	ctx context.Context
+
 	clockService *clock.ClockService
+	audioService *audio.AudioService
+
+	once sync.Once
 }
 
 func NewBridge() *Bridge {
 	return &Bridge{}
 }
 
+// Called by Wails once context is ready
 func (b *Bridge) SetContext(ctx context.Context) {
-	b.ctx = ctx
-
-	b.clockService = clock.NewClockService(ctx)
+	b.once.Do(func() {
+		b.ctx = ctx
+		b.clockService = clock.NewClockService(ctx)
+		b.audioService = audio.NewAudioService(ctx)
+	})
 }
 
 func (b *Bridge) StartClock(user24Hour bool) {
-	b.clockService.Start(user24Hour)
+	if b.clockService != nil {
+		b.clockService.Start(user24Hour)
+	}
 }
 
 func (b *Bridge) StopClock() {
-	b.clockService.Stop()
+	if b.clockService != nil {
+		b.clockService.Stop()
+	}
+}
+
+func (b *Bridge) StartAudio() string {
+	if b.audioService == nil {
+		return "audio service not initialized"
+	}
+
+	if err := b.audioService.Start(); err != nil {
+		return fmt.Sprintf("audio error: %s", err.Error())
+	}
+	return ""
+}
+
+func (b *Bridge) StopAudio() {
+	if b.audioService != nil {
+		b.audioService.Stop()
+	}
 }

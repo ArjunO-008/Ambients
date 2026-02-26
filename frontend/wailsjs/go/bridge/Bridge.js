@@ -6,8 +6,16 @@ export function SetContext(arg1) {
   return window['go']['bridge']['Bridge']['SetContext'](arg1);
 }
 
+export function StartAudio() {
+  return window['go']['bridge']['Bridge']['StartAudio']();
+}
+
 export function StartClock(arg1) {
   return window['go']['bridge']['Bridge']['StartClock'](arg1);
+}
+
+export function StopAudio() {
+  return window['go']['bridge']['Bridge']['StopAudio']();
 }
 
 export function StopClock() {
