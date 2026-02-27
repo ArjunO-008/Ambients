@@ -4,6 +4,7 @@ import (
 	"Ambients/core/audio"
 	"Ambients/core/clock"
 	"Ambients/core/media"
+	"Ambients/core/skin"
 	"context"
 	"fmt"
 	"sync"
@@ -15,6 +16,7 @@ type Bridge struct {
 	clockService *clock.ClockService
 	audioService *audio.AudioService
 	mediaService *media.MediaService
+	SkinService  *skin.SkinService
 
 	once sync.Once
 }
@@ -30,6 +32,8 @@ func (b *Bridge) SetContext(ctx context.Context) {
 		b.clockService = clock.NewClockService(ctx)
 		b.audioService = audio.NewAudioService(ctx)
 		b.mediaService = media.NewMediaService()
+		b.SkinService = skin.NewSkinService()
+		b.SkinService.EnsureCustomDir()
 	})
 }
 
@@ -83,4 +87,25 @@ func (b *Bridge) MediaStop() {
 	if b.mediaService != nil {
 		b.mediaService.Stop()
 	}
+}
+
+func (b *Bridge) ListCustomSkin() string {
+	if b.SkinService == nil {
+		return "[]"
+	}
+	return b.SkinService.ListCustomSkin()
+}
+
+func (b *Bridge) ReadCustomSkin(id string) string {
+	if b.SkinService == nil {
+		return ""
+	}
+	return b.SkinService.ReadCustomSkin(id)
+}
+
+func (b *Bridge) GetCustomDir() string {
+	if b.SkinService == nil {
+		return ""
+	}
+	return b.SkinService.GetCustomDir()
 }

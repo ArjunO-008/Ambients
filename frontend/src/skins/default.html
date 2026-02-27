@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: monospace;
+  }
+
+  /* Radial pulse that reacts to audio energy */
+  .pulse {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%);
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+    position: absolute;
+  }
+</style>
+</head>
+<body>
+
+<div class="pulse" id="pulse"></div>
+
+<script>
+
+  window.ambientspace.onAudio(function(bands) {
+
+    const energy = bands.reduce((a, b) => a + b, 0) / bands.length
+    const scale = 1 + energy * 3
+    const opacity = 0.3 + energy * 0.7
+
+    const pulse = document.getElementById('pulse')
+    pulse.style.transform = `scale(${scale})`
+    pulse.style.opacity = opacity
+    
+  })
+
+  window.ambientspace.onClock(function(time) {
+    document.title = `${time.hours}:${time.minutes}`
+  })
+</script>
+</body>
+</html>
