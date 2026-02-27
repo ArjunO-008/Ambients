@@ -4,11 +4,13 @@ go 1.24.0
 
 require (
 	github.com/gordonklaus/portaudio v0.0.0-20260203164431-765aa7dfa631
+	github.com/sqweek/dialog v0.0.0-20260123140253-64c163d53aac
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/sys v0.41.0
 )
 
 require (
+	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect

@@ -1,95 +1,154 @@
 import { useEffect, useState, useRef } from "react"
 import { EventsOn } from "../../wailsjs/runtime/runtime"
 import SkinFrame from "../components/SkinFrame"
-
-// ─── Constants ───────────────────────────────────────────────────────────────
+import Settings from "./Settings"
 
 const NUM_BANDS = 64
 
-// ─── Overlay ─────────────────────────────────────────────────────────────────
-
 export default function Overlay() {
+  const [showSettings, setShowSettings] = useState(false)
+  const [appSettings, setAppSettings]   = useState(null)
+
+  // Load settings on mount
+  useEffect(() => {
+    window.go.bridge.Bridge.LoadSettings().then((raw) => {
+      setAppSettings(JSON.parse(raw))
+    })
+  }, [])
+
+  // Reload settings when settings panel closes
+  function handleSettingsClose() {
+    setShowSettings(false)
+    window.go.bridge.Bridge.LoadSettings().then((raw) => {
+      setAppSettings(JSON.parse(raw))
+    })
+  }
+
+  if (!appSettings) return null // wait for settings to load
+
   return (
     <div style={styles.root}>
-      <SkinFrame skinId="default" isCustom={false} />  {/* ← add this */}
+
+      {/* Background — image or video */}
+      <Background settings={appSettings} />
+
+      {/* Active skin */}
+      <SkinFrame
+        skinId={appSettings.activeSkinID || "default"}
+        isCustom={appSettings.activeSkinCustom || false}
+      />
+
+      {/* Grain texture */}
       <div style={styles.grain} />
+
+      {/* Main content */}
       <div style={styles.center}>
-        <ClockDisplay />
+        <ClockDisplay use24Hour={appSettings.use24Hour} />
         <WaveformDisplay />
       </div>
+
+      {/* Media controls */}
       <div style={styles.bottom}>
         <MediaBar />
       </div>
+
+      {/* Temporary settings toggle — will move to tray in Step 9 */}
+      <button
+        style={styles.settingsBtn}
+        onClick={() => setShowSettings(true)}
+        title="Settings"
+      >
+        ⚙
+      </button>
+
+      {/* Settings panel */}
+      {showSettings && <Settings onClose={handleSettingsClose} />}
+
     </div>
   )
 }
 
-// ─── Clock ───────────────────────────────────────────────────────────────────
+// ─── Background ───────────────────────────────────────────────────────────────
 
-function ClockDisplay() {
+function Background({ settings }) {
+  if (!settings.backgroundPath || !settings.backgroundType) return null
+
+  // encode the path so backslashes and spaces are safe in a URL
+  const src = `/media?path=${encodeURIComponent(settings.backgroundPath)}`
+
+  const baseStyle = {
+    position: "fixed",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    zIndex: 0,
+    pointerEvents: "none",
+  }
+
+  if (settings.backgroundType === "video") {
+    return (
+      <video
+        key={src}
+        style={baseStyle}
+        src={src}
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
+    )
+  }
+
+  return (
+    <img
+      key={src}
+      style={baseStyle}
+      src={src}
+      alt=""
+    />
+  )
+}
+// ─── Clock, Waveform, MediaBar — same as before, just pass use24Hour ─────────
+
+function ClockDisplay({ use24Hour }) {
   const [time, setTime] = useState({
-    hours: "00",
-    minutes: "00",
-    seconds: "00",
-    date: "",
-    ampm: "",
+    hours: "00", minutes: "00", seconds: "00", date: "", ampm: "",
   })
 
   useEffect(() => {
-    window.go.bridge.Bridge.StartClock(false)
+    window.go.bridge.Bridge.StartClock(use24Hour)
     const unlisten = EventsOn("clock:tick", setTime)
     return () => {
       unlisten?.()
       window.go.bridge.Bridge.StopClock()
     }
-  }, [])
+  }, [use24Hour])
 
   return (
     <div style={styles.clockWrap}>
-      {/* Main time display */}
       <div style={styles.clockRow}>
-        <span style={styles.clockDigits}>
-          {time.hours}
-        </span>
+        <span style={styles.clockDigits}>{time.hours}</span>
         <span style={styles.clockColon}>:</span>
-        <span style={styles.clockDigits}>
-          {time.minutes}
-        </span>
-        {time.ampm && (
-          <span style={styles.clockAmPm}>{time.ampm}</span>
-        )}
+        <span style={styles.clockDigits}>{time.minutes}</span>
+        {time.ampm && <span style={styles.clockAmPm}>{time.ampm}</span>}
       </div>
-
-      {/* Seconds — smaller, dimmer */}
-      <div style={styles.clockSeconds}>
-        :{time.seconds}
-      </div>
-
-      {/* Date */}
-      <div style={styles.clockDate}>
-        {time.date}
-      </div>
+      <div style={styles.clockSeconds}>:{time.seconds}</div>
+      <div style={styles.clockDate}>{time.date}</div>
     </div>
   )
 }
 
-// ─── Waveform ─────────────────────────────────────────────────────────────────
-
 function WaveformDisplay() {
-  const [bands, setBands] = useState(() => Array(NUM_BANDS).fill(0))
-  const [error, setError] = useState("")
-  const startedRef = useRef(false)
+  const [bands, setBands]   = useState(() => Array(NUM_BANDS).fill(0))
+  const [error, setError]   = useState("")
+  const startedRef          = useRef(false)
 
   useEffect(() => {
-    const unlisten = EventsOn("audio:frame", (data) => {
-      if (Array.isArray(data) && data.length === NUM_BANDS) {
-        setBands(data)
-      }
+    const unlisten      = EventsOn("audio:frame", (data) => {
+      if (Array.isArray(data) && data.length === NUM_BANDS) setBands(data)
     })
-
-    const unlistenError = EventsOn("audio:error", (msg) => {
-      setError(msg)
-    })
+    const unlistenError = EventsOn("audio:error", setError)
 
     if (!startedRef.current) {
       startedRef.current = true
@@ -97,7 +156,6 @@ function WaveformDisplay() {
         if (err) setError(err)
       })
     }
-
     return () => {
       unlisten?.()
       unlistenError?.()
@@ -106,38 +164,25 @@ function WaveformDisplay() {
     }
   }, [])
 
-  if (error) {
-    return <div style={styles.error}>{error}</div>
-  }
+  if (error) return <div style={styles.error}>{error}</div>
 
   return (
     <div style={styles.waveformWrap}>
       {bands.map((amplitude, i) => {
-        // mirror the waveform — bars grow from center outward
-        // gives a more organic, symmetric feel
         const mirrored = i < NUM_BANDS / 2
           ? bands[NUM_BANDS / 2 - 1 - i]
           : bands[i - NUM_BANDS / 2]
-
-        const height = Math.max(3, mirrored * 100)
-        const opacity = 0.25 + mirrored * 0.75
-
         return (
-          <div
-            key={i}
-            style={{
-              ...styles.bar,
-              height: `${height}%`,
-              opacity,
-            }}
-          />
+          <div key={i} style={{
+            ...styles.bar,
+            height: `${Math.max(3, mirrored * 100)}%`,
+            opacity: 0.25 + mirrored * 0.75,
+          }} />
         )
       })}
     </div>
   )
 }
-
-// ─── Media Controls ───────────────────────────────────────────────────────────
 
 function MediaBar() {
   const btn = (label, fn, large = false) => (
@@ -150,7 +195,6 @@ function MediaBar() {
       {label}
     </button>
   )
-
   return (
     <div style={styles.mediaBar}>
       {btn("⏮", () => window.go.bridge.Bridge.MediaPrevious())}
@@ -172,12 +216,10 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "'Courier New', 'Lucida Console', monospace",
+    fontFamily: "'Segoe UI', Arial, sans-serif",
     overflow: "hidden",
     userSelect: "none",
   },
-
-  // SVG noise grain — pure CSS, no image needed
   grain: {
     position: "fixed",
     inset: 0,
@@ -186,48 +228,41 @@ const styles = {
     backgroundSize: "128px 128px",
     pointerEvents: "none",
     opacity: 0.4,
+    zIndex: 1,
   },
-
   center: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: "48px",
-    zIndex: 1,
+    zIndex: 2,
   },
-
-  // Clock
   clockWrap: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: "4px",
   },
-
   clockRow: {
     display: "flex",
     alignItems: "baseline",
     gap: "2px",
     lineHeight: 1,
   },
-
   clockDigits: {
     fontSize: "clamp(5rem, 14vw, 10rem)",
-    fontWeight: 200,       // ultra-thin — elegant on dark background
+    fontWeight: 200,
     color: "#ffffff",
     letterSpacing: "-0.02em",
-    fontVariantNumeric: "tabular-nums", // prevents layout shift as digits change
+    fontVariantNumeric: "tabular-nums",
   },
-
   clockColon: {
     fontSize: "clamp(4rem, 11vw, 8rem)",
     fontWeight: 200,
     color: "rgba(255,255,255,0.3)",
     margin: "0 4px",
-    // blink the colon every second for a subtle pulse
     animation: "blink 1s step-end infinite",
   },
-
   clockAmPm: {
     fontSize: "clamp(1.2rem, 3vw, 2rem)",
     fontWeight: 300,
@@ -237,7 +272,6 @@ const styles = {
     marginBottom: "12px",
     letterSpacing: "0.1em",
   },
-
   clockSeconds: {
     fontSize: "clamp(1rem, 2.5vw, 1.6rem)",
     fontWeight: 300,
@@ -245,7 +279,6 @@ const styles = {
     letterSpacing: "0.05em",
     marginTop: "4px",
   },
-
   clockDate: {
     fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
     fontWeight: 300,
@@ -254,37 +287,29 @@ const styles = {
     textTransform: "uppercase",
     marginTop: "8px",
   },
-
-  // Waveform
   waveformWrap: {
     display: "flex",
     alignItems: "flex-end",
     gap: "2px",
-    height: "80px",
-    width: "min(600px, 70vw)",
+    height: "120px",
+    width: "min(700px, 75vw)",
   },
-
   bar: {
     flex: 1,
     background: "#ffffff",
     borderRadius: "1px 1px 0 0",
     transition: "height 0.06s ease-out, opacity 0.06s ease-out",
-    transformOrigin: "bottom",
   },
-
-  // Media controls
   bottom: {
     position: "fixed",
-    bottom: "40px",
-    zIndex: 1,
+    bottom: "60px",
+    zIndex: 2,
   },
-
   mediaBar: {
     display: "flex",
     alignItems: "center",
     gap: "12px",
   },
-
   mediaBtn: {
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.08)",
@@ -297,10 +322,9 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "background 0.2s, color 0.2s",
+    transition: "background 0.2s",
     outline: "none",
   },
-
   mediaBtnLarge: {
     width: "56px",
     height: "56px",
@@ -308,7 +332,21 @@ const styles = {
     color: "rgba(255,255,255,0.9)",
     border: "1px solid rgba(255,255,255,0.15)",
   },
-
+  settingsBtn: {
+    position: "fixed",
+    top: "20px",
+    right: "20px",
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "50%",
+    width: "36px",
+    height: "36px",
+    color: "rgba(255,255,255,0.3)",
+    fontSize: "1rem",
+    cursor: "pointer",
+    zIndex: 10,
+    outline: "none",
+  },
   error: {
     color: "rgba(255,100,100,0.8)",
     fontSize: "0.8rem",
