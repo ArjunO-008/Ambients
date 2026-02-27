@@ -1,23 +1,7 @@
-import Clock from "./components/Clock"
-import MediaControls from "./components/MediaControls"
-import Waveform from "./components/Waveform"
+import Overlay from "./views/Overlay"
 
 function App() {
-  return (
-    <div style={{
-      background: "#0a0a0a",
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "40px",
-    }}>
-      <Clock use24Hour={false} />
-      <Waveform />
-      <MediaControls/>
-    </div>
-  )
+  return <Overlay />  
 }
 
 export default App
