@@ -1,4 +1,5 @@
 import Clock from "./components/Clock"
+import MediaControls from "./components/MediaControls"
 import Waveform from "./components/Waveform"
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
     }}>
       <Clock use24Hour={false} />
       <Waveform />
+      <MediaControls/>
     </div>
   )
 }

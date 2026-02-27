@@ -3,6 +3,7 @@ package bridge
 import (
 	"Ambients/core/audio"
 	"Ambients/core/clock"
+	"Ambients/core/media"
 	"context"
 	"fmt"
 	"sync"
@@ -13,6 +14,7 @@ type Bridge struct {
 
 	clockService *clock.ClockService
 	audioService *audio.AudioService
+	mediaService *media.MediaService
 
 	once sync.Once
 }
@@ -27,6 +29,7 @@ func (b *Bridge) SetContext(ctx context.Context) {
 		b.ctx = ctx
 		b.clockService = clock.NewClockService(ctx)
 		b.audioService = audio.NewAudioService(ctx)
+		b.mediaService = media.NewMediaService()
 	})
 }
 
@@ -56,5 +59,28 @@ func (b *Bridge) StartAudio() string {
 func (b *Bridge) StopAudio() {
 	if b.audioService != nil {
 		b.audioService.Stop()
+	}
+}
+
+func (b *Bridge) MediaPlayPause() {
+	if b.mediaService != nil {
+		b.mediaService.PlayPause()
+	}
+}
+func (b *Bridge) MediaNext() {
+	if b.mediaService != nil {
+		b.mediaService.Next()
+	}
+}
+
+func (b *Bridge) MediaPrevious() {
+	if b.mediaService != nil {
+		b.mediaService.Previous()
+	}
+}
+
+func (b *Bridge) MediaStop() {
+	if b.mediaService != nil {
+		b.mediaService.Stop()
 	}
 }

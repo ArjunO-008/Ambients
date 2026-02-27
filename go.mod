@@ -1,10 +1,11 @@
 module Ambients
 
-go 1.23
+go 1.24.0
 
 require (
 	github.com/gordonklaus/portaudio v0.0.0-20260203164431-765aa7dfa631
 	github.com/wailsapp/wails/v2 v2.11.0
+	golang.org/x/sys v0.41.0
 )
 
 require (
@@ -33,7 +34,6 @@ require (
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 )
 
