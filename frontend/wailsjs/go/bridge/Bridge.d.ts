@@ -20,7 +20,11 @@ export function OpenFolder(arg1:string):Promise<void>;
 
 export function PickBackground():Promise<string>;
 
+export function PreventSleep():Promise<void>;
+
 export function ReadCustomSkin(arg1:string):Promise<string>;
+
+export function RestoreSleep():Promise<void>;
 
 export function SaveSettings(arg1:string):Promise<string>;
 

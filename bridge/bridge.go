@@ -5,6 +5,7 @@ import (
 	"Ambients/core/clock"
 	"Ambients/core/config"
 	"Ambients/core/media"
+	"Ambients/core/power"
 	"Ambients/core/skin"
 	"context"
 	"encoding/json"
@@ -20,6 +21,7 @@ type Bridge struct {
 	mediaService  *media.MediaService
 	SkinService   *skin.SkinService
 	configService *config.ConfigService
+	powerService  *power.PowerService
 
 	once sync.Once
 }
@@ -37,6 +39,7 @@ func (b *Bridge) SetContext(ctx context.Context) {
 		b.mediaService = media.NewMediaService()
 		b.SkinService = skin.NewSkinService()
 		b.configService = config.NewConfigService()
+		b.powerService = power.NewPowerService()
 
 		b.SkinService.EnsureCustomDir()
 		b.configService.EnsureDir()
@@ -151,4 +154,17 @@ func (b *Bridge) PickBackground() string {
 
 func (b *Bridge) OpenFolder(path string) {
 	openFolder(path)
+}
+
+//POWER
+
+func (b *Bridge) PreventSleep() {
+	if b.powerService != nil {
+		b.powerService.Prevent()
+	}
+}
+func (b *Bridge) RestoreSleep() {
+	if b.powerService != nil {
+		b.powerService.Restore()
+	}
 }

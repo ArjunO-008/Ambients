@@ -38,8 +38,16 @@ export function PickBackground() {
   return window['go']['bridge']['Bridge']['PickBackground']();
 }
 
+export function PreventSleep() {
+  return window['go']['bridge']['Bridge']['PreventSleep']();
+}
+
 export function ReadCustomSkin(arg1) {
   return window['go']['bridge']['Bridge']['ReadCustomSkin'](arg1);
+}
+
+export function RestoreSleep() {
+  return window['go']['bridge']['Bridge']['RestoreSleep']();
 }
 
 export function SaveSettings(arg1) {

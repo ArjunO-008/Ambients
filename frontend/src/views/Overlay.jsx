@@ -7,13 +7,20 @@ const NUM_BANDS = 64
 
 export default function Overlay() {
   const [showSettings, setShowSettings] = useState(false)
-  const [appSettings, setAppSettings]   = useState(null)
+  const [appSettings, setAppSettings] = useState(null)
 
   // Load settings on mount
   useEffect(() => {
     window.go.bridge.Bridge.LoadSettings().then((raw) => {
       setAppSettings(JSON.parse(raw))
     })
+  }, [])
+  // Prevent sleep when overlay mounts, restore when it unmounts
+  useEffect(() => {
+    window.go.bridge.Bridge.PreventSleep()
+    return () => {
+      window.go.bridge.Bridge.RestoreSleep()
+    }
   }, [])
 
   // Reload settings when settings panel closes
@@ -140,12 +147,12 @@ function ClockDisplay({ use24Hour }) {
 }
 
 function WaveformDisplay() {
-  const [bands, setBands]   = useState(() => Array(NUM_BANDS).fill(0))
-  const [error, setError]   = useState("")
-  const startedRef          = useRef(false)
+  const [bands, setBands] = useState(() => Array(NUM_BANDS).fill(0))
+  const [error, setError] = useState("")
+  const startedRef = useRef(false)
 
   useEffect(() => {
-    const unlisten      = EventsOn("audio:frame", (data) => {
+    const unlisten = EventsOn("audio:frame", (data) => {
       if (Array.isArray(data) && data.length === NUM_BANDS) setBands(data)
     })
     const unlistenError = EventsOn("audio:error", setError)
