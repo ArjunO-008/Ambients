@@ -4,6 +4,8 @@ import {context} from '../models';
 
 export function GetSkinsDir():Promise<string>;
 
+export function LaunchMusicPlayer():Promise<string>;
+
 export function ListCustomSkins():Promise<string>;
 
 export function LoadSettings():Promise<string>;
@@ -20,6 +22,8 @@ export function OpenFolder(arg1:string):Promise<void>;
 
 export function PickBackground():Promise<string>;
 
+export function PickMusicPlayer():Promise<string>;
+
 export function PreventSleep():Promise<void>;
 
 export function ReadCustomSkin(arg1:string):Promise<string>;
@@ -34,6 +38,10 @@ export function StartAudio():Promise<string>;
 
 export function StartClock(arg1:boolean):Promise<void>;
 
+export function StartShortcutListener(arg1:context.Context):Promise<void>;
+
 export function StopAudio():Promise<void>;
 
 export function StopClock():Promise<void>;
+
+export function UpdateShortcut(arg1:string):Promise<string>;

@@ -6,6 +6,10 @@ export function GetSkinsDir() {
   return window['go']['bridge']['Bridge']['GetSkinsDir']();
 }
 
+export function LaunchMusicPlayer() {
+  return window['go']['bridge']['Bridge']['LaunchMusicPlayer']();
+}
+
 export function ListCustomSkins() {
   return window['go']['bridge']['Bridge']['ListCustomSkins']();
 }
@@ -38,6 +42,10 @@ export function PickBackground() {
   return window['go']['bridge']['Bridge']['PickBackground']();
 }
 
+export function PickMusicPlayer() {
+  return window['go']['bridge']['Bridge']['PickMusicPlayer']();
+}
+
 export function PreventSleep() {
   return window['go']['bridge']['Bridge']['PreventSleep']();
 }
@@ -66,10 +74,18 @@ export function StartClock(arg1) {
   return window['go']['bridge']['Bridge']['StartClock'](arg1);
 }
 
+export function StartShortcutListener(arg1) {
+  return window['go']['bridge']['Bridge']['StartShortcutListener'](arg1);
+}
+
 export function StopAudio() {
   return window['go']['bridge']['Bridge']['StopAudio']();
 }
 
 export function StopClock() {
   return window['go']['bridge']['Bridge']['StopClock']();
+}
+
+export function UpdateShortcut(arg1) {
+  return window['go']['bridge']['Bridge']['UpdateShortcut'](arg1);
 }

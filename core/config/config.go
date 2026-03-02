@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Settings struct {
-	Use24Hour        bool   `json:"use24Hour"`
-	ActiveSkinID     string `json:"activeSkinID"`
-	ActiveSkinCustom bool   `json:"activeSkinCustom"`
-	BackgroundPath   string `json:"backgroundPath"`
-	BackgroundType   string `json:"backgroundType"`
+	Use24Hour          bool   `json:"use24Hour"`
+	ActiveSkinID       string `json:"activeSkinID"`
+	ActiveSkinCustom   bool   `json:"activeSkinCustom"`
+	BackgroundPath     string `json:"backgroundPath"`
+	BackgroundType     string `json:"backgroundType"`
+	GlobalShortcut     string `json:"globalShortcut"`
+	MusicPlayerPath    string `json:"musicPlayerPath"`
+	MusicPlayerEnabled bool   `json:"musicPlayerEnabled"`
 }
 
 type ConfigService struct {
@@ -43,6 +47,17 @@ func (c *ConfigService) Load() Settings {
 		return Settings{
 			Use24Hour:    false,
 			ActiveSkinID: "default",
+		}
+	}
+	if s.BackgroundPath != "" && s.BackgroundType == "" {
+		ext := strings.ToLower(filepath.Ext(s.BackgroundPath))
+		videoExts := map[string]bool{
+			".mp4": true, ".webm": true, ".mov": true, ".mkv": true,
+		}
+		if videoExts[ext] {
+			s.BackgroundType = "video"
+		} else {
+			s.BackgroundType = "image"
 		}
 	}
 	return s

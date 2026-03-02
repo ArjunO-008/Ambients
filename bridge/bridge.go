@@ -2,26 +2,32 @@ package bridge
 
 import (
 	"Ambients/core/audio"
+	"Ambients/core/autostart"
 	"Ambients/core/clock"
 	"Ambients/core/config"
 	"Ambients/core/media"
 	"Ambients/core/power"
+	"Ambients/core/shortcut"
 	"Ambients/core/skin"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type Bridge struct {
 	ctx context.Context
 
-	clockService  *clock.ClockService
-	audioService  *audio.AudioService
-	mediaService  *media.MediaService
-	SkinService   *skin.SkinService
-	configService *config.ConfigService
-	powerService  *power.PowerService
+	clockService    *clock.ClockService
+	audioService    *audio.AudioService
+	mediaService    *media.MediaService
+	SkinService     *skin.SkinService
+	configService   *config.ConfigService
+	powerService    *power.PowerService
+	shortcutService *shortcut.ShortcutService
 
 	once sync.Once
 }
@@ -40,6 +46,7 @@ func (b *Bridge) SetContext(ctx context.Context) {
 		b.SkinService = skin.NewSkinService()
 		b.configService = config.NewConfigService()
 		b.powerService = power.NewPowerService()
+		b.shortcutService = shortcut.NewShortcutService()
 
 		b.SkinService.EnsureCustomDir()
 		b.configService.EnsureDir()
@@ -167,4 +174,56 @@ func (b *Bridge) RestoreSleep() {
 	if b.powerService != nil {
 		b.powerService.Restore()
 	}
+}
+
+// Shortcut
+
+func (b *Bridge) StartShortcutListener(ctx context.Context) {
+	s := b.configService.Load()
+	if s.GlobalShortcut == "" {
+		return
+	}
+
+	b.shortcutService.Listen(s.GlobalShortcut, func() {
+		// do everything in Go — don't rely on React being visible
+		runtime.WindowShow(ctx)
+		runtime.WindowFullscreen(ctx)
+
+		// small delay then emit so React is ready to receive
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			runtime.EventsEmit(ctx, "overlay:show")
+		}()
+	})
+}
+func (b *Bridge) UpdateShortcut(shortcutStr string) string {
+	err := b.shortcutService.Listen(shortcutStr, func() {
+		runtime.WindowShow(b.ctx)
+		runtime.WindowFullscreen(b.ctx)
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			runtime.EventsEmit(b.ctx, "overlay:show")
+		}()
+	})
+	if err != nil {
+		return err.Error()
+	}
+	return ""
+}
+func (b *Bridge) LaunchMusicPlayer() string {
+	s := b.configService.Load()
+	if !s.MusicPlayerEnabled || s.MusicPlayerPath == "" {
+		return ""
+	}
+	if err := autostart.LaunchAndPlay(s.MusicPlayerPath, b.ctx); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+func (b *Bridge) PickMusicPlayer() string {
+	path, err := pickExeFile()
+	if err != nil {
+		return ""
+	}
+	return path
 }

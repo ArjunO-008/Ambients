@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react"
-import { EventsOn } from "../../wailsjs/runtime/runtime"
+import { EventsOn, WindowHide, WindowFullscreen } from "../../wailsjs/runtime/runtime"
 import SkinFrame from "../components/SkinFrame"
 import Settings from "./Settings"
 
@@ -7,59 +7,107 @@ const NUM_BANDS = 64
 
 export default function Overlay() {
   const [showSettings, setShowSettings] = useState(false)
-  const [appSettings, setAppSettings] = useState(null)
+  const [appSettings, setAppSettings]   = useState(null)
+  const settingsLoadedRef               = useRef(false)
 
-  // Load settings on mount
+  // ── Load settings ONCE ──────────────────────────────────────────────────────
+  // Previously there were TWO useEffects loading settings — causing a double
+  // render that reset appSettings to null on the second pass, hiding Background.
   useEffect(() => {
+    if (settingsLoadedRef.current) return
+    settingsLoadedRef.current = true
+
     window.go.bridge.Bridge.LoadSettings().then((raw) => {
       setAppSettings(JSON.parse(raw))
     })
   }, [])
-  // Prevent sleep when overlay mounts, restore when it unmounts
+
+  // ── Go fullscreen on mount ───────────────────────────────────────────────────
+  useEffect(() => {
+    WindowFullscreen()
+  }, [])
+
+  // ── Prevent sleep ────────────────────────────────────────────────────────────
   useEffect(() => {
     window.go.bridge.Bridge.PreventSleep()
+    return () => window.go.bridge.Bridge.RestoreSleep()
+  }, [])
+
+  // ── Auto-start music player ──────────────────────────────────────────────────
+  useEffect(() => {
+    window.go.bridge.Bridge.LaunchMusicPlayer()
+  }, [])
+
+  // ── ESC key → hide window back to tray ──────────────────────────────────────
+  // Previously used window.runtime.WindowHide() which doesn't exist —
+  // correct import is WindowHide from wailsjs/runtime/runtime
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === "Escape") {
+        window.go.bridge.Bridge.RestoreSleep()
+        window.go.bridge.Bridge.StopAudio()
+        WindowHide() // ← correct — imported from wailsjs runtime above
+      }
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [])
+
+  // ── Tray / shortcut events ───────────────────────────────────────────────────
+  useEffect(() => {
+    const unlistenShow   = EventsOn("overlay:show",   () => { setShowSettings(false) })
+    const unlistenOpen   = EventsOn("settings:open",  () => { setShowSettings(true)  })
+    const unlistenToggle = EventsOn("overlay:toggle", () => { setShowSettings(false) })
     return () => {
-      window.go.bridge.Bridge.RestoreSleep()
+      unlistenShow?.()
+      unlistenOpen?.()
+      unlistenToggle?.()
     }
   }, [])
 
-  // Reload settings when settings panel closes
+  // ── Reload settings after settings panel closes ──────────────────────────────
   function handleSettingsClose() {
     setShowSettings(false)
+    // reload so background/skin changes reflect immediately
     window.go.bridge.Bridge.LoadSettings().then((raw) => {
       setAppSettings(JSON.parse(raw))
     })
   }
 
-  if (!appSettings) return null // wait for settings to load
+  // Show a plain black screen while settings load — don't return null
+  // Returning null was preventing Background from ever mounting on first render
+  if (!appSettings) {
+    return <div style={{ position: "fixed", inset: 0, background: "#080808" }} />
+  }
 
   return (
     <div style={styles.root}>
+      {console.log("backgroundPath:", appSettings?.backgroundPath, "backgroundType:", appSettings?.backgroundType)}
 
-      {/* Background — image or video */}
+      {/* Background image or video — zIndex 0, sits behind everything */}
       <Background settings={appSettings} />
 
-      {/* Active skin */}
+      {/* Active skin iframe — zIndex 0, behind clock/waveform */}
       <SkinFrame
         skinId={appSettings.activeSkinID || "default"}
         isCustom={appSettings.activeSkinCustom || false}
       />
 
-      {/* Grain texture */}
+      {/* Grain texture — zIndex 1 */}
       <div style={styles.grain} />
 
-      {/* Main content */}
+      {/* Clock + waveform — zIndex 2 */}
       <div style={styles.center}>
         <ClockDisplay use24Hour={appSettings.use24Hour} />
         <WaveformDisplay />
       </div>
 
-      {/* Media controls */}
+      {/* Media controls — pinned bottom, zIndex 2 */}
       <div style={styles.bottom}>
         <MediaBar />
       </div>
 
-      {/* Temporary settings toggle — will move to tray in Step 9 */}
+      {/* Settings gear — top right, zIndex 10 */}
       <button
         style={styles.settingsBtn}
         onClick={() => setShowSettings(true)}
@@ -68,7 +116,7 @@ export default function Overlay() {
         ⚙
       </button>
 
-      {/* Settings panel */}
+      {/* Settings panel — zIndex 100, full overlay */}
       {showSettings && <Settings onClose={handleSettingsClose} />}
 
     </div>
@@ -78,9 +126,9 @@ export default function Overlay() {
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function Background({ settings }) {
-  if (!settings.backgroundPath || !settings.backgroundType) return null
+  if (!settings?.backgroundPath || !settings?.backgroundType) return null
 
-  // encode the path so backslashes and spaces are safe in a URL
+  // encodeURIComponent handles backslashes and spaces in Windows paths
   const src = `/media?path=${encodeURIComponent(settings.backgroundPath)}`
 
   const baseStyle = {
@@ -103,6 +151,8 @@ function Background({ settings }) {
         loop
         muted
         playsInline
+        onError={() => console.error("❌ Video failed:", src)}
+        onCanPlay={() => console.log("✅ Video ready:", src)}
       />
     )
   }
@@ -113,10 +163,13 @@ function Background({ settings }) {
       style={baseStyle}
       src={src}
       alt=""
+      onLoad={() => console.log("✅ Image loaded:", src)}
+      onError={() => console.error("❌ Image failed:", src)}
     />
   )
 }
-// ─── Clock, Waveform, MediaBar — same as before, just pass use24Hour ─────────
+
+// ─── Clock ────────────────────────────────────────────────────────────────────
 
 function ClockDisplay({ use24Hour }) {
   const [time, setTime] = useState({
@@ -146,13 +199,15 @@ function ClockDisplay({ use24Hour }) {
   )
 }
 
+// ─── Waveform ─────────────────────────────────────────────────────────────────
+
 function WaveformDisplay() {
-  const [bands, setBands] = useState(() => Array(NUM_BANDS).fill(0))
-  const [error, setError] = useState("")
-  const startedRef = useRef(false)
+  const [bands, setBands]   = useState(() => Array(NUM_BANDS).fill(0))
+  const [error, setError]   = useState("")
+  const startedRef          = useRef(false)
 
   useEffect(() => {
-    const unlisten = EventsOn("audio:frame", (data) => {
+    const unlisten      = EventsOn("audio:frame", (data) => {
       if (Array.isArray(data) && data.length === NUM_BANDS) setBands(data)
     })
     const unlistenError = EventsOn("audio:error", setError)
@@ -163,6 +218,7 @@ function WaveformDisplay() {
         if (err) setError(err)
       })
     }
+
     return () => {
       unlisten?.()
       unlistenError?.()
@@ -191,6 +247,8 @@ function WaveformDisplay() {
   )
 }
 
+// ─── Media Controls ───────────────────────────────────────────────────────────
+
 function MediaBar() {
   const btn = (label, fn, large = false) => (
     <button
@@ -206,7 +264,7 @@ function MediaBar() {
     <div style={styles.mediaBar}>
       {btn("⏮", () => window.go.bridge.Bridge.MediaPrevious())}
       {btn("⏯", () => window.go.bridge.Bridge.MediaPlayPause(), true)}
-      {btn("⏭", () => window.go.bridge.Bridge.MediaNext())}
+      {btn("⏭",  () => window.go.bridge.Bridge.MediaNext())}
       {btn("⏹", () => window.go.bridge.Bridge.MediaStop())}
     </div>
   )
