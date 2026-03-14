@@ -1,22 +1,20 @@
 import { useEffect, useState, useRef } from "react"
-import { EventsOn, WindowHide, WindowFullscreen } from "../../wailsjs/runtime/runtime"
+import { EventsOn, WindowFullscreen } from "../../wailsjs/runtime/runtime"
 import SkinFrame from "../components/SkinFrame"
 import Settings from "./Settings"
 
 const NUM_BANDS = 64
 
 export default function Overlay() {
-  const [showSettings, setShowSettings] = useState(false)
-  const [appSettings, setAppSettings]   = useState(null)
-  const settingsLoadedRef               = useRef(false)
+  const [showSettings, setShowSettings]   = useState(false)
+  const [appSettings, setAppSettings]     = useState(null)
+  const [skinHides, setSkinHides]         = useState({ clock: false, waveform: false })
+  const settingsLoadedRef                 = useRef(false)
 
-  // ── Load settings ONCE ──────────────────────────────────────────────────────
-  // Previously there were TWO useEffects loading settings — causing a double
-  // render that reset appSettings to null on the second pass, hiding Background.
+  // ── Load settings ONCE on mount ─────────────────────────────────────────────
   useEffect(() => {
     if (settingsLoadedRef.current) return
     settingsLoadedRef.current = true
-
     window.go.bridge.Bridge.LoadSettings().then((raw) => {
       setAppSettings(JSON.parse(raw))
     })
@@ -27,67 +25,48 @@ export default function Overlay() {
     WindowFullscreen()
   }, [])
 
-  // ── Prevent sleep ────────────────────────────────────────────────────────────
+  // ── Prevent sleep while app is open ─────────────────────────────────────────
   useEffect(() => {
     window.go.bridge.Bridge.PreventSleep()
     return () => window.go.bridge.Bridge.RestoreSleep()
   }, [])
 
-  // ── Auto-start music player ──────────────────────────────────────────────────
+  // ── Auto-start music player on launch ───────────────────────────────────────
   useEffect(() => {
     window.go.bridge.Bridge.LaunchMusicPlayer()
   }, [])
 
-  // ── ESC key → hide window back to tray ──────────────────────────────────────
-  // Previously used window.runtime.WindowHide() which doesn't exist —
-  // correct import is WindowHide from wailsjs/runtime/runtime
+  // ── Listen for skin-hide messages from SkinFrame ─────────────────────────────
+  // Skins post { type: "skin-config", hide: "clock,waveform" } to hide
+  // the default overlay clock/waveform when the skin has its own.
   useEffect(() => {
-    function handleKey(e) {
-      if (e.key === "Escape") {
-        window.go.bridge.Bridge.RestoreSleep()
-        window.go.bridge.Bridge.StopAudio()
-        WindowHide() // ← correct — imported from wailsjs runtime above
-      }
+    function handleSkinHide(e) {
+      setSkinHides(e.detail)
     }
-    window.addEventListener("keydown", handleKey)
-    return () => window.removeEventListener("keydown", handleKey)
+    window.addEventListener("skin-hide", handleSkinHide)
+    return () => window.removeEventListener("skin-hide", handleSkinHide)
   }, [])
 
-  // ── Tray / shortcut events ───────────────────────────────────────────────────
-  useEffect(() => {
-    const unlistenShow   = EventsOn("overlay:show",   () => { setShowSettings(false) })
-    const unlistenOpen   = EventsOn("settings:open",  () => { setShowSettings(true)  })
-    const unlistenToggle = EventsOn("overlay:toggle", () => { setShowSettings(false) })
-    return () => {
-      unlistenShow?.()
-      unlistenOpen?.()
-      unlistenToggle?.()
-    }
-  }, [])
-
-  // ── Reload settings after settings panel closes ──────────────────────────────
+  // ── Reload settings when settings panel closes ───────────────────────────────
   function handleSettingsClose() {
     setShowSettings(false)
-    // reload so background/skin changes reflect immediately
     window.go.bridge.Bridge.LoadSettings().then((raw) => {
       setAppSettings(JSON.parse(raw))
     })
   }
 
-  // Show a plain black screen while settings load — don't return null
-  // Returning null was preventing Background from ever mounting on first render
+  // Black screen while settings load — don't return null (breaks Background mount)
   if (!appSettings) {
     return <div style={{ position: "fixed", inset: 0, background: "#080808" }} />
   }
 
   return (
     <div style={styles.root}>
-      {console.log("backgroundPath:", appSettings?.backgroundPath, "backgroundType:", appSettings?.backgroundType)}
 
-      {/* Background image or video — zIndex 0, sits behind everything */}
+      {/* Background image or video — zIndex 0 */}
       <Background settings={appSettings} />
 
-      {/* Active skin iframe — zIndex 0, behind clock/waveform */}
+      {/* Active skin iframe — zIndex 0, behind everything */}
       <SkinFrame
         skinId={appSettings.activeSkinID || "default"}
         isCustom={appSettings.activeSkinCustom || false}
@@ -96,18 +75,18 @@ export default function Overlay() {
       {/* Grain texture — zIndex 1 */}
       <div style={styles.grain} />
 
-      {/* Clock + waveform — zIndex 2 */}
+      {/* Clock + waveform — hidden if skin requests it */}
       <div style={styles.center}>
-        <ClockDisplay use24Hour={appSettings.use24Hour} />
-        <WaveformDisplay />
+        {!skinHides.clock    && <ClockDisplay use24Hour={appSettings.use24Hour} />}
+        {!skinHides.waveform && <WaveformDisplay />}
       </div>
 
-      {/* Media controls — pinned bottom, zIndex 2 */}
+      {/* Media controls — always visible */}
       <div style={styles.bottom}>
         <MediaBar />
       </div>
 
-      {/* Settings gear — top right, zIndex 10 */}
+      {/* Settings gear — top right */}
       <button
         style={styles.settingsBtn}
         onClick={() => setShowSettings(true)}
@@ -116,7 +95,6 @@ export default function Overlay() {
         ⚙
       </button>
 
-      {/* Settings panel — zIndex 100, full overlay */}
       {showSettings && <Settings onClose={handleSettingsClose} />}
 
     </div>
@@ -128,7 +106,6 @@ export default function Overlay() {
 function Background({ settings }) {
   if (!settings?.backgroundPath || !settings?.backgroundType) return null
 
-  // encodeURIComponent handles backslashes and spaces in Windows paths
   const src = `/media?path=${encodeURIComponent(settings.backgroundPath)}`
 
   const baseStyle = {
@@ -202,9 +179,9 @@ function ClockDisplay({ use24Hour }) {
 // ─── Waveform ─────────────────────────────────────────────────────────────────
 
 function WaveformDisplay() {
-  const [bands, setBands]   = useState(() => Array(NUM_BANDS).fill(0))
-  const [error, setError]   = useState("")
-  const startedRef          = useRef(false)
+  const [bands, setBands] = useState(() => Array(NUM_BANDS).fill(0))
+  const [error, setError] = useState("")
+  const startedRef        = useRef(false)
 
   useEffect(() => {
     const unlisten      = EventsOn("audio:frame", (data) => {
@@ -264,7 +241,7 @@ function MediaBar() {
     <div style={styles.mediaBar}>
       {btn("⏮", () => window.go.bridge.Bridge.MediaPrevious())}
       {btn("⏯", () => window.go.bridge.Bridge.MediaPlayPause(), true)}
-      {btn("⏭",  () => window.go.bridge.Bridge.MediaNext())}
+      {btn("⏭", () => window.go.bridge.Bridge.MediaNext())}
       {btn("⏹", () => window.go.bridge.Bridge.MediaStop())}
     </div>
   )
