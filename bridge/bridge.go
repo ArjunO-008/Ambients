@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"Ambients/core/audio"
+	"Ambients/core/autostart"
 	"Ambients/core/clock"
 	"Ambients/core/config"
 	"Ambients/core/media"
@@ -160,4 +161,24 @@ func (b *Bridge) RestoreSleep() {
 	if b.powerService != nil {
 		b.powerService.Restore()
 	}
+}
+
+// AUTOSTART
+func (b *Bridge) LaunchMusicPlayer() string {
+	s := b.configService.Load()
+	if !s.MusicPlayerEnabled || s.MusicPlayerPath == "" {
+		return ""
+	}
+	if err := autostart.LaunchAndPlay(s.MusicPlayerPath, b.ctx); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+func (b *Bridge) PickMusicPlayer() string {
+	path, err := pickExeFile()
+	if err != nil {
+		return ""
+	}
+	return path
 }
