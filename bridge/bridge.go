@@ -2,41 +2,32 @@ package bridge
 
 import (
 	"Ambients/core/audio"
-	"Ambients/core/autostart"
 	"Ambients/core/clock"
 	"Ambients/core/config"
 	"Ambients/core/media"
 	"Ambients/core/power"
-	"Ambients/core/shortcut"
 	"Ambients/core/skin"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type Bridge struct {
-	ctx context.Context
-
-	clockService    *clock.ClockService
-	audioService    *audio.AudioService
-	mediaService    *media.MediaService
-	SkinService     *skin.SkinService
-	configService   *config.ConfigService
-	powerService    *power.PowerService
-	shortcutService *shortcut.ShortcutService
-
-	once sync.Once
+	ctx           context.Context
+	clockService  *clock.ClockService
+	audioService  *audio.AudioService
+	mediaService  *media.MediaService
+	SkinService   *skin.SkinService
+	configService *config.ConfigService
+	powerService  *power.PowerService
+	once          sync.Once
 }
 
 func NewBridge() *Bridge {
 	return &Bridge{}
 }
 
-// Called by Wails once context is ready
 func (b *Bridge) SetContext(ctx context.Context) {
 	b.once.Do(func() {
 		b.ctx = ctx
@@ -46,7 +37,6 @@ func (b *Bridge) SetContext(ctx context.Context) {
 		b.SkinService = skin.NewSkinService()
 		b.configService = config.NewConfigService()
 		b.powerService = power.NewPowerService()
-		b.shortcutService = shortcut.NewShortcutService()
 
 		b.SkinService.EnsureCustomDir()
 		b.configService.EnsureDir()
@@ -54,9 +44,9 @@ func (b *Bridge) SetContext(ctx context.Context) {
 }
 
 // CLOCK
-func (b *Bridge) StartClock(user24Hour bool) {
+func (b *Bridge) StartClock(use24Hour bool) {
 	if b.clockService != nil {
-		b.clockService.Start(user24Hour)
+		b.clockService.Start(use24Hour)
 	}
 }
 
@@ -71,7 +61,6 @@ func (b *Bridge) StartAudio() string {
 	if b.audioService == nil {
 		return "audio service not initialized"
 	}
-
 	if err := b.audioService.Start(); err != nil {
 		return fmt.Sprintf("audio error: %s", err.Error())
 	}
@@ -95,13 +84,11 @@ func (b *Bridge) MediaNext() {
 		b.mediaService.Next()
 	}
 }
-
 func (b *Bridge) MediaPrevious() {
 	if b.mediaService != nil {
 		b.mediaService.Previous()
 	}
 }
-
 func (b *Bridge) MediaStop() {
 	if b.mediaService != nil {
 		b.mediaService.Stop()
@@ -163,8 +150,7 @@ func (b *Bridge) OpenFolder(path string) {
 	openFolder(path)
 }
 
-//POWER
-
+// POWER
 func (b *Bridge) PreventSleep() {
 	if b.powerService != nil {
 		b.powerService.Prevent()
@@ -174,56 +160,4 @@ func (b *Bridge) RestoreSleep() {
 	if b.powerService != nil {
 		b.powerService.Restore()
 	}
-}
-
-// Shortcut
-
-func (b *Bridge) StartShortcutListener(ctx context.Context) {
-	s := b.configService.Load()
-	if s.GlobalShortcut == "" {
-		return
-	}
-
-	b.shortcutService.Listen(s.GlobalShortcut, func() {
-		// do everything in Go — don't rely on React being visible
-		runtime.WindowShow(ctx)
-		runtime.WindowFullscreen(ctx)
-
-		// small delay then emit so React is ready to receive
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			runtime.EventsEmit(ctx, "overlay:show")
-		}()
-	})
-}
-func (b *Bridge) UpdateShortcut(shortcutStr string) string {
-	err := b.shortcutService.Listen(shortcutStr, func() {
-		runtime.WindowShow(b.ctx)
-		runtime.WindowFullscreen(b.ctx)
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			runtime.EventsEmit(b.ctx, "overlay:show")
-		}()
-	})
-	if err != nil {
-		return err.Error()
-	}
-	return ""
-}
-func (b *Bridge) LaunchMusicPlayer() string {
-	s := b.configService.Load()
-	if !s.MusicPlayerEnabled || s.MusicPlayerPath == "" {
-		return ""
-	}
-	if err := autostart.LaunchAndPlay(s.MusicPlayerPath, b.ctx); err != nil {
-		return err.Error()
-	}
-	return ""
-}
-func (b *Bridge) PickMusicPlayer() string {
-	path, err := pickExeFile()
-	if err != nil {
-		return ""
-	}
-	return path
 }

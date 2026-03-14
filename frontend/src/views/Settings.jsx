@@ -86,19 +86,6 @@ export default function Settings({ onClose }) {
           <button style={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        {/* Global Shortcut */}
-        <Section label="Global Shortcut">
-          <ShortcutRecorder
-            value={settings.globalShortcut || ""}
-            onChange={async (combo) => {
-              const updated = { ...settings, globalShortcut: combo }
-              const err = await window.go.bridge.Bridge.UpdateShortcut(combo)
-              if (err) setStatus("Shortcut error: " + err)
-              else save(updated)
-            }}
-          />
-        </Section>
-
         {/* Music Player Auto-start */}
         <Section label="Music Player">
           <ToggleRow
@@ -246,53 +233,7 @@ function SkinCard({ skin, active, onSelect }) {
     </div>
   )
 }
-function ShortcutRecorder({ value, onChange }) {
-  const [recording, setRecording] = useState(false)
-  const [display, setDisplay] = useState(value || "")
 
-  function handleKeyDown(e) {
-    e.preventDefault()
-
-    // build the combo string from what's pressed
-    const parts = []
-    if (e.ctrlKey) parts.push("ctrl")
-    if (e.shiftKey) parts.push("shift")
-    if (e.altKey) parts.push("alt")
-
-    // only record if a non-modifier key is also pressed
-    const key = e.key.toLowerCase()
-    const isModifier = ["control", "shift", "alt", "meta"].includes(key)
-    if (!isModifier) {
-      parts.push(key === " " ? "space" : key)
-      const combo = parts.join("+")
-      setDisplay(combo)
-      onChange(combo)
-      setRecording(false)
-    }
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      <div
-        tabIndex={0}
-        style={{
-          ...styles.input,
-          cursor: "pointer",
-          outline: recording ? "1px solid rgba(255,255,255,0.4)" : "none",
-          color: display ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.25)",
-        }}
-        onClick={() => setRecording(true)}
-        onBlur={() => setRecording(false)}
-        onKeyDown={recording ? handleKeyDown : undefined}
-      >
-        {recording ? "Press your shortcut keys..." : (display || "Click to record shortcut")}
-      </div>
-      <span style={styles.hint}>
-        Click the box then press your key combo (e.g. Ctrl+Shift+A)
-      </span>
-    </div>
-  )
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
