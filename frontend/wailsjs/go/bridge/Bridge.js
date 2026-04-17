@@ -6,6 +6,10 @@ export function GetSkinsDir() {
   return window['go']['bridge']['Bridge']['GetSkinsDir']();
 }
 
+export function LaunchMusicPlayer() {
+  return window['go']['bridge']['Bridge']['LaunchMusicPlayer']();
+}
+
 export function ListCustomSkins() {
   return window['go']['bridge']['Bridge']['ListCustomSkins']();
 }
@@ -36,6 +40,10 @@ export function OpenFolder(arg1) {
 
 export function PickBackground() {
   return window['go']['bridge']['Bridge']['PickBackground']();
+}
+
+export function PickMusicPlayer() {
+  return window['go']['bridge']['Bridge']['PickMusicPlayer']();
 }
 
 export function PreventSleep() {
