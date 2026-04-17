@@ -50,6 +50,10 @@ export function PreventSleep() {
   return window['go']['bridge']['Bridge']['PreventSleep']();
 }
 
+export function QuitApp() {
+  return window['go']['bridge']['Bridge']['QuitApp']();
+}
+
 export function ReadCustomSkin(arg1) {
   return window['go']['bridge']['Bridge']['ReadCustomSkin'](arg1);
 }

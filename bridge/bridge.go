@@ -12,6 +12,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type Bridge struct {
@@ -40,6 +42,7 @@ func (b *Bridge) SetContext(ctx context.Context) {
 		b.powerService = power.NewPowerService()
 
 		b.SkinService.EnsureCustomDir()
+		b.SkinService.SeedBuiltinSkins()
 		b.configService.EnsureDir()
 	})
 }
@@ -181,4 +184,9 @@ func (b *Bridge) PickMusicPlayer() string {
 		return ""
 	}
 	return path
+}
+
+// Quit exits the application cleanly.
+func (b *Bridge) QuitApp() {
+	runtime.Quit(b.ctx)
 }

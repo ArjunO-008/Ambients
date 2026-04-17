@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react"
 
-// Built-in skin options — must match keys in SkinFrame's BUILT_IN_SKINS
-const BUILT_IN_SKINS = [
-  { id: "default", name: "Default (Pulse)" },
-  { id: "minimal", name: "Minimal" },
-]
-
 export default function Settings({ onClose }) {
   const [settings, setSettings] = useState(null)
   const [customSkins, setCustomSkins] = useState([])
@@ -72,7 +66,6 @@ export default function Settings({ onClose }) {
   }
 
   const allSkins = [
-    ...BUILT_IN_SKINS.map(s => ({ ...s, isCustom: false })),
     ...customSkins.map(s => ({ ...s, isCustom: true })),
   ]
 
@@ -130,26 +123,20 @@ export default function Settings({ onClose }) {
         {/* Skin selector */}
         <Section label="Skin">
           <div style={styles.skinGrid}>
-            {allSkins.map(skin => (
+            {customSkins.map(skin => (
               <SkinCard
-                key={skin.id + (skin.isCustom ? "-custom" : "")}
+                key={skin.id}
                 skin={skin}
-                active={
-                  settings.activeSkinID === skin.id &&
-                  settings.activeSkinCustom === skin.isCustom
-                }
+                active={settings.activeSkinID === skin.id}
                 onSelect={() => save({
                   ...settings,
                   activeSkinID: skin.id,
-                  activeSkinCustom: skin.isCustom,
+                  activeSkinCustom: true,
                 })}
               />
             ))}
           </div>
-          <button
-            style={styles.ghostBtn}
-            onClick={handleOpenSkinsFolder}
-          >
+          <button style={styles.ghostBtn} onClick={handleOpenSkinsFolder}>
             Open skins folder
           </button>
         </Section>
@@ -177,9 +164,18 @@ export default function Settings({ onClose }) {
         </Section>
 
         {/* Status message */}
-        {status && <div style={styles.status}>{status}</div>}
-
-      </div>
+        {status && <div style={styles.status}>{status}</div>}  
+        {/* Exit button */}
+        <button
+          style={styles.exitBtn}
+          onClick={async () => {
+            await window.go.bridge.Bridge.RestoreSleep()
+            window.go.bridge.Bridge.QuitApp()
+          }}
+        >
+          Exit AmbientSpace
+        </button>     
+      </div>      
     </div>
   )
 }
@@ -451,5 +447,17 @@ const styles = {
     fontSize: "0.85rem",
     outline: "none",
     width: "100%",
+  },
+  exitBtn: {
+    background: "rgba(220,50,50,0.15)",
+    border: "1px solid rgba(220,50,50,0.3)",
+    borderRadius: "6px",
+    color: "rgba(220,100,100,0.9)",
+    padding: "10px 14px",
+    fontSize: "0.85rem",
+    cursor: "pointer",
+    width: "100%",
+    textAlign: "center",
+    marginTop: "8px",
   },
 }

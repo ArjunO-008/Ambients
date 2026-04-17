@@ -26,6 +26,8 @@ export function PickMusicPlayer():Promise<string>;
 
 export function PreventSleep():Promise<void>;
 
+export function QuitApp():Promise<void>;
+
 export function ReadCustomSkin(arg1:string):Promise<string>;
 
 export function RestoreSleep():Promise<void>;
