@@ -4,28 +4,32 @@
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
+  html, body {
+    width: 100%; height: 100%;
     background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', Arial, sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
-    font-family: 'Courier New', monospace;
-    color: rgba(255,255,255,0.15);
-    font-size: 0.7rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
+    user-select: none;
   }
-  #label { transition: opacity 0.3s; }
+  .time {
+    font-size: clamp(3rem, 10vw, 7rem);
+    font-weight: 100;
+    color: rgba(255,255,255,0.15);
+    letter-spacing: 0.3em;
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.3s;
+  }
 </style>
 </head>
 <body>
-  <div id="label">ambient</div>
-  <script>
-    window.ambientspace.onAudio(function(bands) {
-      const energy = bands.reduce((a, b) => a + b, 0) / bands.length
-      document.getElementById('label').style.opacity = 0.1 + energy * 0.9
-    })
-  </script>
+<div class="time" id="time">00:00</div>
+<script>
+  window.ambientspace.onClock(function(time) {
+    document.getElementById('time').textContent = time.hours + ':' + time.minutes
+  })
+</script>
 </body>
 </html>

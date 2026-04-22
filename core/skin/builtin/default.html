@@ -4,48 +4,140 @@
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
+  
+  html, body {
+    width: 100%; height: 100%;
     background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #fff;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
-    overflow: hidden;
-    font-family: monospace;
+    gap: 48px;
+    user-select: none;
   }
 
-  /* Radial pulse that reacts to audio energy */
-  .pulse {
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%);
-    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
-    position: absolute;
+  /* Clock */
+  .clock-row {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    line-height: 1;
+  }
+  .digits {
+    font-size: clamp(5rem, 14vw, 10rem);
+    font-weight: 200;
+    color: #fff;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .colon {
+    font-size: clamp(4rem, 11vw, 8rem);
+    font-weight: 200;
+    color: rgba(255,255,255,0.3);
+    margin: 0 4px;
+    animation: blink 1s step-end infinite;
+  }
+  .ampm {
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 300;
+    color: rgba(255,255,255,0.4);
+    margin-left: 12px;
+    align-self: flex-end;
+    margin-bottom: 12px;
+    letter-spacing: 0.1em;
+  }
+  .seconds {
+    font-size: clamp(1rem, 2.5vw, 1.6rem);
+    font-weight: 300;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+    text-align: center;
+  }
+  .date {
+    font-size: clamp(0.75rem, 1.5vw, 1rem);
+    font-weight: 300;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  /* Waveform */
+  .waveform {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 120px;
+    width: min(700px, 75vw);
+  }
+  .bar {
+    flex: 1;
+    background: #fff;
+    border-radius: 1px 1px 0 0;
+    min-height: 3px;
+    transition: height 0.06s ease-out, opacity 0.06s ease-out;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
   }
 </style>
 </head>
 <body>
 
-<div class="pulse" id="pulse"></div>
+<div id="clock-wrap">
+  <div class="clock-row">
+    <span class="digits" id="hours">00</span>
+    <span class="colon">:</span>
+    <span class="digits" id="minutes">00</span>
+    <span class="ampm" id="ampm"></span>
+  </div>
+  <div class="seconds" id="seconds">:00</div>
+  <div class="date" id="date"></div>
+</div>
+
+<div class="waveform" id="waveform"></div>
 
 <script>
+  const NUM_BANDS = 64
 
-  window.ambientspace.onAudio(function(bands) {
-
-    const energy = bands.reduce((a, b) => a + b, 0) / bands.length
-    const scale = 1 + energy * 3
-    const opacity = 0.3 + energy * 0.7
-
-    const pulse = document.getElementById('pulse')
-    pulse.style.transform = `scale(${scale})`
-    pulse.style.opacity = opacity
-    
-  })
+  // Build waveform bars
+  const waveformEl = document.getElementById('waveform')
+  const bars = []
+  for (let i = 0; i < NUM_BANDS; i++) {
+    const bar = document.createElement('div')
+    bar.className = 'bar'
+    bar.style.height = '3px'
+    bar.style.opacity = '0.25'
+    waveformEl.appendChild(bar)
+    bars.push(bar)
+  }
 
   window.ambientspace.onClock(function(time) {
-    document.title = `${time.hours}:${time.minutes}`
+    document.getElementById('hours').textContent   = time.hours
+    document.getElementById('minutes').textContent = time.minutes
+    document.getElementById('seconds').textContent = ':' + time.seconds
+    document.getElementById('date').textContent    = time.date
+    const ampmEl = document.getElementById('ampm')
+    ampmEl.textContent = time.ampm || ''
+  })
+
+  window.ambientspace.onAudio(function(bands) {
+    for (let i = 0; i < NUM_BANDS; i++) {
+      // mirror left-right
+      const v = i < NUM_BANDS / 2
+        ? bands[NUM_BANDS / 2 - 1 - i]
+        : bands[i - NUM_BANDS / 2]
+      const h = Math.max(3, v * 100)
+      bars[i].style.height  = h + '%'
+      bars[i].style.opacity = 0.25 + v * 0.75
+    }
   })
 </script>
 </body>

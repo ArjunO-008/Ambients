@@ -47,7 +47,7 @@ export default function SkinFrame({ skinId = "default", isCustom = false }) {
     iframeRef.current?.contentWindow?.postMessage(data, "*")
   }
 
-  async function loadSkin(id) {
+  async function loadSkin(id,custom) {
     // All skins now live in the config folder — load via Go
     const html = await window.go.bridge.Bridge.ReadCustomSkin(id)
 
@@ -94,7 +94,7 @@ export default function SkinFrame({ skinId = "default", isCustom = false }) {
         border: "none",
         background: "transparent",
         pointerEvents: "none",
-        zIndex: 0,
+        zIndex: 2,
       }}
       sandbox="allow-scripts"
       title="skin"

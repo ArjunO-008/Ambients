@@ -65,10 +65,6 @@ export default function Settings({ onClose }) {
     return <div style={styles.root}><div style={styles.loading}>Loading...</div></div>
   }
 
-  const allSkins = [
-    ...customSkins.map(s => ({ ...s, isCustom: true })),
-  ]
-
   return (
     <div style={styles.root}>
       <div style={styles.panel}>

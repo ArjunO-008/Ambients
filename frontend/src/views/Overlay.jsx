@@ -112,6 +112,7 @@ function MediaBar() {
   )
 }
 
+
 const styles = {
   root: {
     position: "fixed", inset: 0,
