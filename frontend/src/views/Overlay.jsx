@@ -8,6 +8,7 @@ export default function Overlay() {
   const [appSettings, setAppSettings]   = useState(null)
   const settingsLoadedRef               = useRef(false)
 
+  // Load settings ONCE
   useEffect(() => {
     if (settingsLoadedRef.current) return
     settingsLoadedRef.current = true
@@ -16,18 +17,34 @@ export default function Overlay() {
     })
   }, [])
 
+  // Fullscreen
   useEffect(() => {
     WindowFullscreen()
   }, [])
 
+  // Prevent sleep
   useEffect(() => {
     window.go.bridge.Bridge.PreventSleep()
     return () => window.go.bridge.Bridge.RestoreSleep()
   }, [])
 
+  // Auto-start music player
   useEffect(() => {
     window.go.bridge.Bridge.LaunchMusicPlayer()
   }, [])
+
+  // Start clock + audio — feeds data into the skin via SkinFrame's EventsOn listeners
+  // Depends on appSettings so we pass the correct use24Hour value
+  // Re-runs if use24Hour changes (toggled in settings)
+  useEffect(() => {
+    if (!appSettings) return
+    window.go.bridge.Bridge.StartClock(appSettings.use24Hour)
+    window.go.bridge.Bridge.StartAudio()
+    return () => {
+      window.go.bridge.Bridge.StopClock()
+      window.go.bridge.Bridge.StopAudio()
+    }
+  }, [appSettings?.use24Hour])
 
   function handleSettingsClose() {
     setShowSettings(false)
@@ -43,13 +60,13 @@ export default function Overlay() {
   return (
     <div style={styles.root}>
 
-      {/* Background */}
+      {/* Background image or video */}
       <Background settings={appSettings} />
 
-      {/* Grain */}
+      {/* Grain overlay */}
       <div style={styles.grain} />
 
-      {/* Top 80% — skin renders here (clock + waveform live inside the skin HTML) */}
+      {/* Top 80% — skin iframe renders clock + waveform */}
       <div style={styles.skinArea}>
         <SkinFrame
           skinId={appSettings.activeSkinID || "default"}
@@ -62,7 +79,7 @@ export default function Overlay() {
         <MediaBar />
       </div>
 
-      {/* Settings gear — top right, always on top */}
+      {/* Settings gear — fixed top right, above everything */}
       <button
         style={styles.settingsBtn}
         onClick={() => setShowSettings(true)}
@@ -80,15 +97,15 @@ export default function Overlay() {
 function Background({ settings }) {
   if (!settings?.backgroundPath || !settings?.backgroundType) return null
   const src = `/media?path=${encodeURIComponent(settings.backgroundPath)}`
-  const baseStyle = {
+  const base = {
     position: "fixed", inset: 0,
     width: "100%", height: "100%",
     objectFit: "cover", zIndex: 0, pointerEvents: "none",
   }
   if (settings.backgroundType === "video") {
-    return <video key={src} style={baseStyle} src={src} autoPlay loop muted playsInline />
+    return <video key={src} style={base} src={src} autoPlay loop muted playsInline />
   }
-  return <img key={src} style={baseStyle} src={src} alt="" />
+  return <img key={src} style={base} src={src} alt="" />
 }
 
 function MediaBar() {
@@ -112,7 +129,6 @@ function MediaBar() {
   )
 }
 
-
 const styles = {
   root: {
     position: "fixed", inset: 0,
@@ -132,14 +148,12 @@ const styles = {
     opacity: 0.4,
     zIndex: 1,
   },
-  // Top 80% — skin lives here
   skinArea: {
     flex: "0 0 80%",
     position: "relative",
     zIndex: 2,
     overflow: "hidden",
   },
-  // Bottom 20% — media controls
   mediaArea: {
     flex: "0 0 20%",
     display: "flex",
@@ -183,7 +197,7 @@ const styles = {
     color: "rgba(255,255,255,0.3)",
     fontSize: "1rem",
     cursor: "pointer",
-    zIndex: 50,  // always above skin and grain
+    zIndex: 50,
     outline: "none",
   },
 }
