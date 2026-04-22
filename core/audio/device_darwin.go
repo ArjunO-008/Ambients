@@ -27,10 +27,9 @@ func findLoopbackDevice() (*portaudio.DeviceInfo, error) {
 	for _, d := range devices {
 		if d.MaxInputChannels > 0 {
 			name := strings.ToLower(d.Name)
-			// BlackHole is the most common free loopback driver for macOS
 			if strings.Contains(name, "blackhole") ||
 				strings.Contains(name, "loopback") ||
-				strings.Contains(name, "soundflower") { // older alternative
+				strings.Contains(name, "soundflower") {
 				return d, nil
 			}
 		}

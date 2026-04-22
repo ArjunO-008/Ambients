@@ -5,10 +5,10 @@ import Settings from "./Settings"
 
 export default function Overlay() {
   const [showSettings, setShowSettings] = useState(false)
-  const [appSettings, setAppSettings]   = useState(null)
-  const settingsLoadedRef               = useRef(false)
+  const [appSettings, setAppSettings] = useState(null)
+  const settingsLoadedRef = useRef(false)
 
-  // Load settings ONCE
+
   useEffect(() => {
     if (settingsLoadedRef.current) return
     settingsLoadedRef.current = true
@@ -17,25 +17,23 @@ export default function Overlay() {
     })
   }, [])
 
-  // Fullscreen
+
   useEffect(() => {
     WindowFullscreen()
   }, [])
 
-  // Prevent sleep
+
   useEffect(() => {
     window.go.bridge.Bridge.PreventSleep()
     return () => window.go.bridge.Bridge.RestoreSleep()
   }, [])
 
-  // Auto-start music player
+
   useEffect(() => {
     window.go.bridge.Bridge.LaunchMusicPlayer()
   }, [])
 
-  // Start clock + audio — feeds data into the skin via SkinFrame's EventsOn listeners
-  // Depends on appSettings so we pass the correct use24Hour value
-  // Re-runs if use24Hour changes (toggled in settings)
+
   useEffect(() => {
     if (!appSettings) return
     window.go.bridge.Bridge.StartClock(appSettings.use24Hour)
@@ -60,13 +58,10 @@ export default function Overlay() {
   return (
     <div style={styles.root}>
 
-      {/* Background image or video */}
       <Background settings={appSettings} />
 
-      {/* Grain overlay */}
       <div style={styles.grain} />
 
-      {/* Top 80% — skin iframe renders clock + waveform */}
       <div style={styles.skinArea}>
         <SkinFrame
           skinId={appSettings.activeSkinID || "default"}
@@ -74,12 +69,10 @@ export default function Overlay() {
         />
       </div>
 
-      {/* Bottom 20% — media controls */}
       <div style={styles.mediaArea}>
         <MediaBar />
       </div>
 
-      {/* Settings gear — fixed top right, above everything */}
       <button
         style={styles.settingsBtn}
         onClick={() => setShowSettings(true)}

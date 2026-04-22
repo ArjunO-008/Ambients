@@ -15,17 +15,13 @@ var SupportedImageExts = []string{".jpg", ".jpeg", ".png", ".webp", ".gif"}
 var SupportedVideoExts = []string{".mp4", ".webm", ".mov", ".mkv"}
 
 func PickBackgroundFile() (path string, mediaType string, errMsg string) {
-	// sqweek/dialog on Windows needs filters added one by one
-	// passing a slice directly doesn't work correctly
+
 	dlg := dialog.File().Title("Choose Background Image or Video")
 
-	// add image filter
 	dlg = dlg.Filter("Image Files (jpg, jpeg, png, webp, gif)", "jpg", "jpeg", "png", "webp", "gif")
 
-	// add video filter
 	dlg = dlg.Filter("Video Files (mp4, webm, mov, mkv)", "mp4", "webm", "mov", "mkv")
 
-	// add all files fallback so user isn't stuck
 	dlg = dlg.Filter("All Files", "*")
 
 	filePath, err := dlg.Load()

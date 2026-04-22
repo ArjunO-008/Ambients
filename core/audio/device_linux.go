@@ -13,7 +13,6 @@ import (
 // findLoopbackDevice on Linux looks for a PulseAudio monitor device.
 // PulseAudio automatically creates a "monitor" source for every output sink —
 // this is the loopback. It typically appears as "Monitor of <device name>".
-//
 // If using PipeWire (modern Ubuntu/Fedora), it also exposes monitor sources
 // the same way for compatibility.
 func findLoopbackDevice() (*portaudio.DeviceInfo, error) {
@@ -25,7 +24,6 @@ func findLoopbackDevice() (*portaudio.DeviceInfo, error) {
 	for _, d := range devices {
 		if d.MaxInputChannels > 0 {
 			name := strings.ToLower(d.Name)
-			// PulseAudio monitor sources follow this naming pattern
 			if strings.Contains(name, "monitor") {
 				return d, nil
 			}

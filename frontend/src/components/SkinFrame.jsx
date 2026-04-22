@@ -7,7 +7,6 @@ export default function SkinFrame({ skinId = "default", isCustom = false }) {
   const clockUnlistenRef = useRef(null)
 
   useEffect(() => {
-    // Reset hide flags whenever skin changes — default skin has no hide config
     window.dispatchEvent(new CustomEvent("skin-hide", {
       detail: { clock: false, waveform: false }
     }))
@@ -22,7 +21,7 @@ export default function SkinFrame({ skinId = "default", isCustom = false }) {
       postToFrame({ type: "clock", time })
     })
 
-    // Listen for skin-config messages from iframe
+   
     function handleMessage(e) {
       if (e.data?.type === "skin-config") {
         const hide = e.data.hide || ""
@@ -48,7 +47,7 @@ export default function SkinFrame({ skinId = "default", isCustom = false }) {
   }
 
   async function loadSkin(id,custom) {
-    // All skins now live in the config folder — load via Go
+   
     const html = await window.go.bridge.Bridge.ReadCustomSkin(id)
 
     if (!html) {
@@ -73,7 +72,7 @@ export default function SkinFrame({ skinId = "default", isCustom = false }) {
       <\/script>
     `
 
-    // inject shim before skin's own scripts
+
     const injected = html.includes("<script>")
       ? html.replace("<script>", apiShim + "<script>")
       : html.replace("</body>", apiShim + "</body>")

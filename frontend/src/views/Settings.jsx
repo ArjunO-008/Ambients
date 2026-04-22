@@ -6,7 +6,6 @@ export default function Settings({ onClose }) {
   const [status, setStatus] = useState("")
   const [loading, setLoading] = useState(true)
 
-  // Load settings and custom skins on mount
   useEffect(() => {
     Promise.all([
       window.go.bridge.Bridge.LoadSettings(),
@@ -18,7 +17,6 @@ export default function Settings({ onClose }) {
     })
   }, [])
 
-  // Save settings to disk whenever they change
   async function save(updated) {
     setSettings(updated)
     const err = await window.go.bridge.Bridge.SaveSettings(JSON.stringify(updated))
@@ -40,7 +38,7 @@ export default function Settings({ onClose }) {
       return
     }
     if (!result.path) {
-      setStatus("") // cancelled
+      setStatus("") 
       return
     }
 
@@ -57,7 +55,6 @@ export default function Settings({ onClose }) {
 
   async function handleOpenSkinsFolder() {
     const dir = await window.go.bridge.Bridge.GetSkinsDir()
-    // open folder in file explorer
     window.go.bridge.Bridge.OpenFolder(dir)
   }
 

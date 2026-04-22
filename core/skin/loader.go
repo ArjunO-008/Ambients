@@ -39,18 +39,15 @@ func (s *SkinService) GetCustomDir() string {
 	return s.customDir
 }
 
-// SeedBuiltinSkins copies default.html and minimal.html into the skins folder
-// only if the folder is empty — first launch only.
 func (s *SkinService) SeedBuiltinSkins() error {
 	entries, err := os.ReadDir(s.customDir)
 	if err != nil {
 		return err
 	}
 
-	// only seed if folder has no .html files
 	for _, e := range entries {
 		if strings.HasSuffix(strings.ToLower(e.Name()), ".html") {
-			return nil // already has skins, don't overwrite
+			return nil
 		}
 	}
 

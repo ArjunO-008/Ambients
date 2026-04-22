@@ -19,8 +19,6 @@ func findLoopbackDevice() (*portaudio.DeviceInfo, error) {
 		return nil, err
 	}
 
-	// First pass: ideal — WASAPI Stereo Mix
-	// This is device [11] on this machine
 	for _, d := range devices {
 		if d.MaxInputChannels > 0 && d.HostApi != nil {
 			isWASAPI := strings.Contains(d.HostApi.Name, "WASAPI")
@@ -31,8 +29,6 @@ func findLoopbackDevice() (*portaudio.DeviceInfo, error) {
 		}
 	}
 
-	// Second pass: any Stereo Mix regardless of API
-	// Catches MME/DirectSound versions as fallback
 	for _, d := range devices {
 		if d.MaxInputChannels > 0 {
 			if strings.Contains(strings.ToLower(d.Name), "stereo mix") {
@@ -41,8 +37,6 @@ func findLoopbackDevice() (*portaudio.DeviceInfo, error) {
 		}
 	}
 
-	// Third pass: any WASAPI input device
-	// Last resort before giving up
 	for _, d := range devices {
 		if d.MaxInputChannels > 0 && d.HostApi != nil {
 			if strings.Contains(d.HostApi.Name, "WASAPI") {
