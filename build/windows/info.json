@@ -1,15 +1,15 @@
 {
-	"fixed": {
-		"file_version": "1.0.0"
-	},
-	"info": {
-		"0000": {
-			"ProductVersion": "1.0.0",
-			"CompanyName": "Ambients",
-			"FileDescription": "AmbientSpace — desktop ambient overlay",
-			"LegalCopyright": "MIT License, Copyright 2026 Arjun.O",
-			"ProductName": "Ambients",
-			"Comments": "A minimal ambient overlay with a live skin system"
-		}
-	}
+  "fixed": {
+    "file_version": "1.0.0"
+  },
+  "info": {
+    "0000": {
+      "ProductVersion": "1.0.0",
+      "CompanyName": "Arjun.O",
+      "FileDescription": "Ambients — desktop ambient overlay",
+      "LegalCopyright": "MIT License, Copyright 2026 Arjun.O",
+      "ProductName": "Ambients",
+      "Comments": "A minimal ambient overlay with a live skin system"
+    }
+  }
 }
