@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 )
 
 //go:embed all:frontend/dist
@@ -20,16 +22,18 @@ var assets embed.FS
 func main() {
 	app := NewApp()
 	b := bridge.NewBridge()
+	frameless := runtime.GOOS == "darwin"
 
-	err := wails.Run(&options.App{
-		Title:  "Ambients",
-		Width:  1024,
-		Height: 768,
+	opts := &options.App{
+		Title:            "Ambients",
+		Width:            1024,
+		Height:           768,
+		Frameless:        frameless,
+		BackgroundColour: &options.RGBA{R: 8, G: 8, B: 8, A: 1},
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
 			Middleware: mediaMiddleware,
 		},
-		BackgroundColour: &options.RGBA{R: 8, G: 8, B: 8, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
 			b.SetContext(ctx)
@@ -38,9 +42,22 @@ func main() {
 			app,
 			b,
 		},
-	})
+	}
 
-	if err != nil {
+	if runtime.GOOS == "darwin" {
+		opts.Mac = &mac.Options{
+			TitleBar:             mac.TitleBarHiddenInset(),
+			Appearance:           mac.NSAppearanceNameDarkAqua,
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  false,
+			About: &mac.AboutInfo{
+				Title:   "Ambients",
+				Message: "A minimal ambient overlay\nMIT License — Arjun.O",
+			},
+		}
+	}
+
+	if err := wails.Run(opts); err != nil {
 		println("Error:", err.Error())
 	}
 }

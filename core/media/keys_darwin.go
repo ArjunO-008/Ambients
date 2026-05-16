@@ -2,42 +2,14 @@
 
 package media
 
-import (
-	"os/exec"
-)
+import "os/exec"
 
-func (m *MediaService) PlayPause() {
-	runAppleScript(`
-		tell application "System Events"
-			key code 100 using {}
-		end tell
-	`)
-}
+func (m *MediaService) PlayPause() { appleScript(`key code 100`) }
+func (m *MediaService) Next()      { appleScript(`key code 101`) }
+func (m *MediaService) Previous()  { appleScript(`key code 98`) }
+func (m *MediaService) Stop()      { appleScript(`key code 100`) }
 
-func (m *MediaService) Next() {
-	runAppleScript(`
-		tell application "System Events"
-			key code 101 using {}
-		end tell
-	`)
-}
-
-func (m *MediaService) Previous() {
-	runAppleScript(`
-		tell application "System Events"
-			key code 98 using {}
-		end tell
-	`)
-}
-
-func (m *MediaService) Stop() {
-	runAppleScript(`
-		tell application "System Events"
-			key code 100 using {}
-		end tell
-	`)
-}
-
-func runAppleScript(script string) {
+func appleScript(keyEvent string) {
+	script := `tell application "System Events" to ` + keyEvent
 	exec.Command("osascript", "-e", script).Run()
 }

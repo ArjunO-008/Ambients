@@ -1,13 +1,12 @@
 import { useEffect, useState, useRef } from "react"
-import { WindowFullscreen } from "../../wailsjs/runtime/runtime"
+import { WindowFullscreen, WindowMaximise, Environment } from "../../wailsjs/runtime/runtime"
 import SkinFrame from "../components/SkinFrame"
 import Settings from "./Settings"
 
 export default function Overlay() {
   const [showSettings, setShowSettings] = useState(false)
-  const [appSettings, setAppSettings] = useState(null)
-  const settingsLoadedRef = useRef(false)
-
+  const [appSettings, setAppSettings]   = useState(null)
+  const settingsLoadedRef               = useRef(false)
 
   useEffect(() => {
     if (settingsLoadedRef.current) return
@@ -17,22 +16,24 @@ export default function Overlay() {
     })
   }, [])
 
-
   useEffect(() => {
-    WindowFullscreen()
+    Environment().then(env => {
+      if (env.platform === "darwin") {
+        WindowMaximise()
+      } else {
+        WindowFullscreen()
+      }
+    })
   }, [])
-
 
   useEffect(() => {
     window.go.bridge.Bridge.PreventSleep()
     return () => window.go.bridge.Bridge.RestoreSleep()
   }, [])
 
-
   useEffect(() => {
     window.go.bridge.Bridge.LaunchMusicPlayer()
   }, [])
-
 
   useEffect(() => {
     if (!appSettings) return
@@ -59,7 +60,6 @@ export default function Overlay() {
     <div style={styles.root}>
 
       <Background settings={appSettings} />
-
       <div style={styles.grain} />
 
       <div style={styles.skinArea}>
