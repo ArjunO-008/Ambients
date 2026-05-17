@@ -20,7 +20,7 @@ Clock, waveform visualizer and media controls — all driven by a live HTML skin
 
 ## Download
 
-Grab the latest release from [Releases](https://github.com/yourusername/ambients/releases).
+Grab the latest release from [Releases](https://github.com/ArjunO-008/Ambients/releases).
 
 | File | Platform |
 |------|----------|
